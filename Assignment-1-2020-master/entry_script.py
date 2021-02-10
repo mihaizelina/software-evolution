@@ -72,9 +72,10 @@ if __name__ == "__main__":
     #     print(f"There are {len(inputfile.readlines()) - 1} low-level requirements")
 
     low_dict = parse_input_file("dataset-1/low.csv")
-    s = low_dict['UC29']
-    print(tokenize(s, False))
-
+    
+    for req_id in low_dict.keys():
+        low_dict[req_id] = tokenize(low_dict[req_id])
+        print(low_dict[req_id])
 
     '''
     This is where you should implement the trace level logic as discussed in the 
