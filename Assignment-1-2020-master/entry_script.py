@@ -2,6 +2,7 @@ import csv
 import sys
 import nltk
 import string
+from nltk.corpus import stopwords
 
 def write_output_file():
     '''
@@ -39,15 +40,43 @@ def parse_input_file(filename):
     
     return lines
 
-def tokenize(inputtext, dupes = True):
+def tokenize(inputtext, dupes = False):
     '''
     Returns the lowercase words of the input text as list (case-insensitive).
     '''
     tokenlist = inputtext.lower().translate(str.maketrans('', '', string.punctuation)).split()
-    if dupes == False:
-        return list(set(tokenlist))
-    return tokenlist
+    if dupes == True:
+        # Include duplicates
+        return tokenlist
+    return list(set(tokenlist))
 
+def remove_stopwords(words):
+    '''
+    Takes as input a list of words and returns the words list sans stop-words.
+    '''
+    stop_words = set(stopwords.words('english'))
+    filtered = [w for w in words if not w in stop_words]
+    return filtered
+
+def stem_tokens(words):
+    '''
+    Takes as input a list of words and returns the words stems of the input list.
+    '''
+    # TODO: This is where stemming takes place
+    return words
+
+def preprocess(req_dict):
+    '''
+    Takes as input a requirements dict and replaces the texts with their tokenized and stemmed counterparts.
+    Returns the newly-formed dict.
+    '''
+    for req_id in req_dict.keys():
+        keywords = req_dict[req_id]
+        keywords = tokenize(keywords) # tokenize the text strings
+        keywords = remove_stopwords(keywords) # remove stop-words
+        keywords = stem_tokens(keywords) # stem words
+        req_dict[req_id] = keywords
+    return req_dict
 
 if __name__ == "__main__":
     '''
@@ -72,10 +101,8 @@ if __name__ == "__main__":
     #     print(f"There are {len(inputfile.readlines()) - 1} low-level requirements")
 
     low_dict = parse_input_file("dataset-1/low.csv")
-    
-    for req_id in low_dict.keys():
-        low_dict[req_id] = tokenize(low_dict[req_id])
-        print(low_dict[req_id])
+    low_dict = preprocess(low_dict)
+    print(low_dict)
 
     '''
     This is where you should implement the trace level logic as discussed in the 
