@@ -58,11 +58,18 @@ def remove_stopwords(words):
     filtered = [w for w in words if not w in stop_words]
     return filtered
 
-def stem_tokens(words):
+def stem_tokens(words, stemmer = 'porter'):
     '''
     Takes as input a list of words and returns the words stems of the input list.
     '''
-    # TODO: This is where stemming takes place
+    if stemmer == 'snowball':
+        sno = nltk.stem.SnowballStemmer('english')
+    elif stemmer == 'lemma':
+        lemma = nltk.wordnet.WordNetLemmatizer()
+    else:
+        ps = nltk.stemmer.PorterStemmer()
+
+    words = [sno.stem(word) for word in words]
     return words
 
 def preprocess(req_dict):
