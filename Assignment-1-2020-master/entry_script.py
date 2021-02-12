@@ -186,8 +186,6 @@ def eval_func(type):
     else:
         raise ValueError('Match type not recognized.')
 
-    nltk.
-
 if __name__ == "__main__":
     '''
     Entry point for the script.
