@@ -172,7 +172,7 @@ def trace_link_print(sim_matrix, eval):
 
 def eval_func(type):
     '''
-    Returns a lambda function depending on the input match type.
+    Returns evaluation function (as lambda expression), depending on the input match type.
     '''
     if type == 0:
         # no filtering
@@ -185,6 +185,8 @@ def eval_func(type):
         return lambda x: x >= 0.67 * x.max()
     else:
         raise ValueError('Match type not recognized.')
+
+    nltk.
 
 if __name__ == "__main__":
     '''
