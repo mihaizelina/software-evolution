@@ -8,13 +8,18 @@ import numpy as np
 from collections import Counter
 from collections import OrderedDict
 
+in_folder = 'dataset-1/'
+in_low_filename = in_folder + 'low.csv'
+in_high_filename = in_folder + 'high.csv'
+out_filename= 'output/links.csv'
+
 def write_output_file(links):
     '''
     Writes the links to an output file.
     Takes as input a list of lists containing a high requirement as the first element and 
     the linked low requirements as the rest of the elements.
     '''
-    with open('output/links.csv', 'w') as csvfile:
+    with open(out_filename, 'w') as csvfile:
         writer = csv.writer(csvfile, delimiter=",", quotechar="\"", quoting=csv.QUOTE_MINIMAL)
 
         fieldnames = ["id", "links"]
@@ -34,13 +39,21 @@ def parse_input_file(filename):
         exit(2)
     
     inputlines = inputfile.readlines()
-
     lines = {} # stores req in the form "id : text"
-    
     for line in inputlines[1:]:
         split = line.split(',', 1)
         lines[split[0]] = split[1]
-    
+    return lines
+
+def parse_links_file(filename):
+    inputfile = open(filename, "r")
+    inputlines = inputfile.readlines()
+    lines = [] # stores links in the form "id : text"
+
+    for line in inputlines[1:]:
+        split = line.split(',', 1)
+        uclist = split[1].replace('\"', '').replace('\n', '')
+        lines.append([split[0], uclist])
     return lines
 
 def tokenize(inputtext, dupes = False):
@@ -72,7 +85,7 @@ def stem_tokens(words, stemmer = 'snowball'):
         lemma = nltk.wordnet.WordNetLemmatizer()
         words = [lemma.lemmatize(word) for word in words]
     elif stemmer == 'porter':
-        po = nltk.stemmer.PorterStemmer()
+        po = nltk.stem.PorterStemmer()
         words = [po.stem(word) for word in words]
     return words
 
@@ -176,15 +189,48 @@ def eval_func(type):
     '''
     if type == 0:
         # no filtering
-        return lambda x: x > 0
+        return lambda x : x > 0
     elif type == 1:
         # all l such that sim(h, l) > 0.25
-        return lambda x: x >= 0.25
+        return lambda x : x >= 0.25
     elif type == 2:
         # all l' such that, for l with highest similarity score, sim(h, l') >= 0.67 * sim(h, l)
-        return lambda x: x >= 0.67 * x.max()
+        return lambda x : x >= 0.67 * x.max()
+    elif type == 3:
+        return lambda x: (x.max() >= 0.15) & (x >= 0.8 * x.max())
     else:
         raise ValueError('Match type not recognized.')
+
+def conf_matrix(pred_links, real_filename, low_dict, high_dict):
+    real_links = parse_links_file(real_filename)
+    no_links = len(real_links)
+
+    UClist = low_dict.keys()
+
+    TP = 0 # tool + manual
+    FP = 0 # tool + !manual
+    TN = 0 # !tool + !manual
+    FN = 0 # !tool + manual
+
+    for i in range(no_links):
+        predicted = pred_links[i][1].split(',')
+        real = real_links[i][1].split(',')
+
+        TPlist = [value for value in predicted if value in real] # intersection
+        FPlist = [value for value in predicted if value not in real] # predicted - real
+        FNlist = [value for value in real if value not in predicted] # real - predicted
+        TNlist = [value for value in UClist if value not in real and value not in predicted]
+
+        TP += len(TPlist)
+        FP += len(FPlist)
+        TN += len(TNlist)
+        FN += len(FNlist)
+    
+    recall = TP / (TP + FN)
+    precision = TP / (TP + FP)
+    fmeasure = 2 * (recall * precision) / (recall + precision)
+
+    return recall, precision, fmeasure
 
 if __name__ == "__main__":
     '''
@@ -204,20 +250,20 @@ if __name__ == "__main__":
 
     print(f"Running with matchtype {match_type}!")
 
-    # Read input low-level requirements and count them (ignore header line).
-    # with open("/input/low.csv", "r") as inputfile:
-    #     print(f"There are {len(inputfile.readlines()) - 1} low-level requirements")
-
-    high_dict = parse_input_file("dataset-1/high.csv")    
+    high_dict = parse_input_file(in_high_filename)    
     high_dict = preprocess(high_dict)
-    low_dict = parse_input_file("dataset-1/low.csv")
+    low_dict = parse_input_file(in_low_filename)
     low_dict = preprocess(low_dict)
 
-    vectors_high, vectors_low = vectorize(high_dict, low_dict);
+    vectors_high, vectors_low = vectorize(high_dict, low_dict)
     sim = sim_matrix(vectors_high, vectors_low)
 
     # Pass lambda function to evaluate
     links = trace_link(sim, eval_func(match_type))
-    trace_link_print(sim, eval_func(match_type))
+    # trace_link_print(sim, eval_func(match_type))
 
     write_output_file(links)
+    print(f"Links have printed to file " + out_filename)
+
+    recall, precision, fmeasure = conf_matrix(links, 'dataset-1/links.csv', low_dict, high_dict)
+    print(recall, precision, fmeasure)
