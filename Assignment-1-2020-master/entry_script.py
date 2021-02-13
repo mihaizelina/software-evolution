@@ -94,7 +94,7 @@ def stem_tokens(words, stemmer = 'snowball'):
         words = [po.stem(word) for word in words]
     return words
 
-def preprocess(req_dict):
+def preprocess(req_dict, stemmer = 'snowball'):
     '''
     Takes as input a requirements dict and replaces the texts with their tokenized and stemmed counterparts.
     Returns the newly-formed dict.
@@ -103,7 +103,7 @@ def preprocess(req_dict):
         keywords = req_dict[req_id]
         keywords = tokenize(keywords) # tokenize the text strings
         keywords = remove_stopwords(keywords) # remove stop-words
-        keywords = stem_tokens(keywords) # stem words
+        keywords = stem_tokens(keywords, stemmer) # stem words
         req_dict[req_id] = keywords
     return req_dict
 
@@ -243,15 +243,15 @@ def compute_scores(TP, FP, TN, FN):
     fmeasure = 2 * (recall * precision) / (recall + precision)
     return recall, precision, fmeasure
 
-def process(dir, match_type):
+def process(dir, match_type, stemmer = 'snowball'):
     '''
     Processes the requirements in directory dir, computes the scores (if available) and prints them to console.
     This method does all the necessary processing for a single dataset.
     '''
     high_dict = parse_input_file(dir + 'high.csv')    
-    high_dict = preprocess(high_dict)
+    high_dict = preprocess(high_dict, stemmer)
     low_dict = parse_input_file(dir + 'low.csv')
-    low_dict = preprocess(low_dict)
+    low_dict = preprocess(low_dict, stemmer)
 
     # Compute similarity
     vectors_high, vectors_low = vectorize(high_dict, low_dict)
@@ -296,5 +296,5 @@ if __name__ == "__main__":
 
     print(f"Running with matchtype {match_type}\n")
 
-    process(in1, match_type)
+    process(in1, match_type, 'lemma')
     process(in2, match_type)
