@@ -92,6 +92,11 @@ def stem_tokens(words, stemmer = 'snowball'):
     elif stemmer == 'porter':
         po = nltk.stem.PorterStemmer()
         words = [po.stem(word) for word in words]
+    else:
+        print('Invalid stemmer, using Snowball instead')
+        sno = nltk.stem.SnowballStemmer('english')
+        words = [sno.stem(word) for word in words]
+
     return words
 
 def preprocess(req_dict, stemmer = 'snowball'):
@@ -297,4 +302,4 @@ if __name__ == "__main__":
     print(f"Running with matchtype {match_type}\n")
 
     process(in1, match_type, 'lemma')
-    process(in2, match_type)
+    process(in2, match_type, 'lemma')
