@@ -207,7 +207,7 @@ def eval_func(type):
         # all l' such that, for l with highest similarity score, sim(h, l') >= 0.67 * sim(h, l)
         return lambda x : x >= 0.67 * x.max()
     elif type == 3:
-        return lambda x: (x.max() >= 0.2) & (x >= 1 * x.max()) & (x >= 0.3)
+        return lambda x : (x.max() >= 0.2) & (x >= 1 * x.max()) & (x >= 0.3)
     else:
         raise ValueError('Match type not recognized.')
 
@@ -276,6 +276,8 @@ def process(dir, match_type, stemmer = 'snowball'):
         fmeasure = '{0:.3g}'.format(fmeasure)
 
         print("Results on " + dir[:-1])
+        print(f'TP = {TP}  FP = {FP}')
+        print(f'FN = {FN}  TN = {TN}')
         print(f'Recall    = {recall}')
         print(f'Precision = {precision}')
         print(f'F-measure = {fmeasure}\n')
@@ -301,5 +303,5 @@ if __name__ == "__main__":
 
     print(f"Running with matchtype {match_type}\n")
 
-    process(in1, match_type, 'lemma')
-    process(in2, match_type, 'lemma')
+    process(in1, match_type, 'porter')
+    process(in2, match_type, 'porter')
