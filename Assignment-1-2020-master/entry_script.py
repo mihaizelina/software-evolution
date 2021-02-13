@@ -8,7 +8,12 @@ import numpy as np
 from collections import Counter
 from collections import OrderedDict
 
-in_folder = 'dataset-1/'
+# Test filenames
+in1 = 'dataset-1/'
+in2 = 'dataset-2/'
+
+# Standard filenames
+in_folder = 'input/'
 in_low_filename = in_folder + 'low.csv'
 in_high_filename = in_folder + 'high.csv'
 out_filename= 'output/links.csv'
@@ -197,7 +202,7 @@ def eval_func(type):
         # all l' such that, for l with highest similarity score, sim(h, l') >= 0.67 * sim(h, l)
         return lambda x : x >= 0.67 * x.max()
     elif type == 3:
-        return lambda x: (x.max() >= 0.15) & (x >= 0.8 * x.max())
+        return lambda x: (x.max() >= 0.2) & (x >= 1 * x.max()) & (x >= 0.3)
     else:
         raise ValueError('Match type not recognized.')
 
@@ -230,7 +235,48 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
     precision = TP / (TP + FP)
     fmeasure = 2 * (recall * precision) / (recall + precision)
 
+    return TP, FP, TN, FN
+
+def compute_scores(TP, FP, TN, FN):
+    recall = TP / (TP + FN)
+    precision = TP / (TP + FP)
+    fmeasure = 2 * (recall * precision) / (recall + precision)
     return recall, precision, fmeasure
+
+def process(dir, match_type):
+    '''
+    Processes the requirements in directory dir, computes the scores (if available) and prints them to console.
+    This method does all the necessary processing for a single dataset.
+    '''
+    high_dict = parse_input_file(dir + 'high.csv')    
+    high_dict = preprocess(high_dict)
+    low_dict = parse_input_file(dir + 'low.csv')
+    low_dict = preprocess(low_dict)
+
+    # Compute similarity
+    vectors_high, vectors_low = vectorize(high_dict, low_dict)
+    sim = sim_matrix(vectors_high, vectors_low)
+
+    # Pass lambda expression to evaluate
+    links = trace_link(sim, eval_func(match_type))
+    write_output_file(links)
+    # print(f"Links printed to file " + out_filename)
+
+    # Compute scores
+    try:
+        TP, FP, TN, FN = conf_matrix(links, dir + 'links.csv', low_dict, high_dict)
+        recall, precision, fmeasure = compute_scores(TP, FP, TN, FN)
+        recall = '{0:.3g}'.format(recall)
+        precision = '{0:.3g}'.format(precision)
+        fmeasure = '{0:.3g}'.format(fmeasure)
+
+        print("Results on " + dir[:-1])
+        print(f'Recall    = {recall}')
+        print(f'Precision = {precision}')
+        print(f'F-measure = {fmeasure}\n')
+    except ValueError as e:
+        print('No manually computed links available.')
+
 
 if __name__ == "__main__":
     '''
@@ -248,22 +294,7 @@ if __name__ == "__main__":
         print("Match type provided is not a valid number")
         exit(1)
 
-    print(f"Running with matchtype {match_type}!")
+    print(f"Running with matchtype {match_type}\n")
 
-    high_dict = parse_input_file(in_high_filename)    
-    high_dict = preprocess(high_dict)
-    low_dict = parse_input_file(in_low_filename)
-    low_dict = preprocess(low_dict)
-
-    vectors_high, vectors_low = vectorize(high_dict, low_dict)
-    sim = sim_matrix(vectors_high, vectors_low)
-
-    # Pass lambda function to evaluate
-    links = trace_link(sim, eval_func(match_type))
-    # trace_link_print(sim, eval_func(match_type))
-
-    write_output_file(links)
-    print(f"Links have printed to file " + out_filename)
-
-    recall, precision, fmeasure = conf_matrix(links, 'dataset-1/links.csv', low_dict, high_dict)
-    print(recall, precision, fmeasure)
+    process(in1, match_type)
+    process(in2, match_type)
