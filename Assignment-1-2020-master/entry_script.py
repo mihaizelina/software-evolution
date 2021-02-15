@@ -1,10 +1,10 @@
 import csv
 import sys
-import nltk
 import string
-from nltk.corpus import stopwords
 import pandas as pd
 import numpy as np
+import nltk
+from nltk.corpus import stopwords
 from collections import Counter
 from collections import OrderedDict
 
@@ -248,7 +248,7 @@ def compute_scores(TP, FP, TN, FN):
     fmeasure = 2 * (recall * precision) / (recall + precision)
     return recall, precision, fmeasure
 
-def process(dir, match_type, stemmer = 'snowball'):
+def process(dir, match_type, stemmer = 'snowball', verbose = True):
     '''
     Processes the requirements in directory dir, computes the scores (if available) and prints them to console.
     This method does all the necessary processing for a single dataset.
@@ -276,10 +276,11 @@ def process(dir, match_type, stemmer = 'snowball'):
         fmeasure = '{0:.3g}'.format(fmeasure)
 
         print("Results on " + dir[:-1])
-        print(f'TP = {TP}  FP = {FP}')
-        print(f'FN = {FN}  TN = {TN}')
-        print(f'Recall    = {recall}')
-        print(f'Precision = {precision}')
+        if verbose:
+            print(f'TP = {TP}  FP = {FP}')
+            print(f'FN = {FN}  TN = {TN}')
+            print(f'Recall    = {recall}')
+            print(f'Precision = {precision}')
         print(f'F-measure = {fmeasure}\n')
     except ValueError as e:
         print('No manually computed links available.')
@@ -303,5 +304,5 @@ if __name__ == "__main__":
 
     print(f"Running with matchtype {match_type}\n")
 
-    process(in1, match_type, 'porter')
-    process(in2, match_type, 'porter')
+    process(in1, match_type, verbose = False)
+    process(in2, match_type, verbose = False)
