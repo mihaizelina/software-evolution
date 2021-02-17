@@ -8,6 +8,9 @@ from nltk.corpus import stopwords
 from collections import Counter
 from collections import OrderedDict
 
+# Digit format
+dec = '{0:.2g}'
+
 # Test filenames
 in1 = 'dataset-1/'
 in2 = 'dataset-2/'
@@ -51,6 +54,9 @@ def parse_input_file(filename):
     return lines
 
 def parse_links_file(filename):
+    '''
+    Parses a links.csv file. Used only for testing and scoring.
+    '''
     inputfile = open(filename, "r")
     inputlines = inputfile.readlines()
     lines = [] # stores links in the form "id : text"
@@ -99,7 +105,7 @@ def stem_tokens(words, stemmer = 'snowball'):
 
     return words
 
-def preprocess(req_dict, stemmer = 'snowball'):
+def preprocess(req_dict, stemmer = 'snowball', extrafilter = (lambda x : x)):
     '''
     Takes as input a requirements dict and replaces the texts with their tokenized and stemmed counterparts.
     Returns the newly-formed dict.
@@ -108,6 +114,9 @@ def preprocess(req_dict, stemmer = 'snowball'):
         keywords = req_dict[req_id]
         keywords = tokenize(keywords) # tokenize the text strings
         keywords = remove_stopwords(keywords) # remove stop-words
+
+        keywords = extrafilter(keywords) # extra custom filter
+
         keywords = stem_tokens(keywords, stemmer) # stem words
         req_dict[req_id] = keywords
     return req_dict
@@ -171,6 +180,14 @@ def sim_matrix(vectors_high, vectors_low):
             cos_sim = (vrh @ vrl.T) / (np.linalg.norm(vrh)*np.linalg.norm(vrl))
             matrix.at[index, column] = cos_sim
 
+    with open('simmat.txt', 'w') as f:
+        original = sys.stdout
+        sys.stdout = f # Change the standard output to the file we created.
+
+        print(matrix[['UC21', 'UC22', 'UC23']])
+
+        sys.stdout = original # Reset the standard output to its original value
+
     return matrix
 
 def trace_link(sim_matrix, eval):
@@ -190,8 +207,10 @@ def trace_link_print(sim_matrix, eval):
     '''
     for index, _ in sim_matrix.iterrows():
         link = sim_matrix.loc[index][eval(sim_matrix.loc[index])]
-        formatted_link = link.name + ": {" + ', '.join(str(req) for req in link.index.values) + "}"
+        formatted_link = link.name + ": {" + ', '.join(str(req) + ' (' 
+        + str('{0:.2g}'.format(sim_matrix.loc[index][req])) + ')' for req in link.index.values) + "}"
         print(formatted_link)
+    print()
 
 def eval_func(type):
     '''
@@ -207,11 +226,14 @@ def eval_func(type):
         # all l' such that, for l with highest similarity score, sim(h, l') >= 0.67 * sim(h, l)
         return lambda x : x >= 0.67 * x.max()
     elif type == 3:
-        return lambda x : (x.max() >= 0.2) & (x >= 1 * x.max()) & (x >= 0.3)
+        return lambda x : ((x.max() >= 0.3) | (1.5 * x.max() > sum(x))) & (x >= 0.9 * x.max())
     else:
         raise ValueError('Match type not recognized.')
 
 def conf_matrix(pred_links, real_filename, low_dict, high_dict):
+    '''
+    Given predicted links and pre-computed links, returns the confusion matrix elements.
+    '''
     real_links = parse_links_file(real_filename)
     no_links = len(real_links)
 
@@ -243,24 +265,29 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
     return TP, FP, TN, FN
 
 def compute_scores(TP, FP, TN, FN):
+    '''
+    Given a confusion matrix, computes the recall, precision and F-measure.
+    '''
     recall = TP / (TP + FN)
     precision = TP / (TP + FP)
     fmeasure = 2 * (recall * precision) / (recall + precision)
     return recall, precision, fmeasure
 
-def process(dir, match_type, stemmer = 'snowball', verbose = True):
+def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x), verbose = True):
     '''
     Processes the requirements in directory dir, computes the scores (if available) and prints them to console.
     This method does all the necessary processing for a single dataset.
     '''
-    high_dict = parse_input_file(dir + 'high.csv')    
-    high_dict = preprocess(high_dict, stemmer)
+    high_dict = parse_input_file(dir + 'high.csv')
+    high_dict = preprocess(high_dict, stemmer, extrafilter)
     low_dict = parse_input_file(dir + 'low.csv')
-    low_dict = preprocess(low_dict, stemmer)
+    low_dict = preprocess(low_dict, stemmer, extrafilter)
 
     # Compute similarity
     vectors_high, vectors_low = vectorize(high_dict, low_dict)
     sim = sim_matrix(vectors_high, vectors_low)
+
+    trace_link_print(sim, eval_func(match_type))
 
     # Pass lambda expression to evaluate
     links = trace_link(sim, eval_func(match_type))
@@ -271,9 +298,9 @@ def process(dir, match_type, stemmer = 'snowball', verbose = True):
     try:
         TP, FP, TN, FN = conf_matrix(links, dir + 'links.csv', low_dict, high_dict)
         recall, precision, fmeasure = compute_scores(TP, FP, TN, FN)
-        recall = '{0:.3g}'.format(recall)
-        precision = '{0:.3g}'.format(precision)
-        fmeasure = '{0:.3g}'.format(fmeasure)
+        recall = dec.format(recall)
+        precision = dec.format(precision)
+        fmeasure = dec.format(fmeasure)
 
         print("Results on " + dir[:-1])
         if verbose:
@@ -285,6 +312,8 @@ def process(dir, match_type, stemmer = 'snowball', verbose = True):
     except ValueError as e:
         print('No manually computed links available.')
 
+def custom_filter(keywords):
+    return [word for word in keywords if word not in ['new', 'old']]
 
 if __name__ == "__main__":
     '''
@@ -304,5 +333,5 @@ if __name__ == "__main__":
 
     print(f"Running with matchtype {match_type}\n")
 
-    process(in1, match_type, verbose = False)
-    process(in2, match_type, verbose = False)
+    process(in1, match_type, extrafilter = custom_filter, verbose = True)
+    # process(in2, match_type, extrafilter = custom_filter, verbose = True)
