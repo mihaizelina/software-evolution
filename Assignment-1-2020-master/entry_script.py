@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import nltk
 from nltk.corpus import stopwords
+from nltk.corpus import wordnet
 from collections import Counter
 from collections import OrderedDict
 
@@ -20,6 +21,12 @@ in_folder = 'input/'
 in_low_filename = in_folder + 'low.csv'
 in_high_filename = in_folder + 'high.csv'
 out_filename= 'output/links.csv'
+
+
+p1 = 0.3
+p2 = 5
+p3 = 0.85
+
 
 def write_output_file(links):
     '''
@@ -180,19 +187,19 @@ def sim_matrix(vectors_high, vectors_low):
             cos_sim = (vrh @ vrl.T) / (np.linalg.norm(vrh)*np.linalg.norm(vrl))
             matrix.at[index, column] = cos_sim
 
-    with open('simmat.txt', 'w') as f:
-        original = sys.stdout
-        sys.stdout = f # Change the standard output to the file we created.
+    # with open('simmat.txt', 'w') as f:
+    #     original = sys.stdout
+    #     sys.stdout = f # Change the standard output to the file we created.
 
-        print(matrix[['UC21', 'UC22', 'UC23']])
+    #     print(matrix[['UC1', 'UC7']][60:80])
 
-        sys.stdout = original # Reset the standard output to its original value
+    #     sys.stdout = original # Reset the standard output to its original value
 
     return matrix
 
 def trace_link(sim_matrix, eval):
     '''
-    Returns (something) containing trace links according to similarity matrix and evaluation function.
+    Returns list of lists containing trace links according to similarity matrix and evaluation function.
     '''
     res = []
     for index, _ in sim_matrix.iterrows():
@@ -208,7 +215,7 @@ def trace_link_print(sim_matrix, eval):
     for index, _ in sim_matrix.iterrows():
         link = sim_matrix.loc[index][eval(sim_matrix.loc[index])]
         formatted_link = link.name + ": {" + ', '.join(str(req) + ' (' 
-        + str('{0:.2g}'.format(sim_matrix.loc[index][req])) + ')' for req in link.index.values) + "}"
+        + str(dec.format(sim_matrix.loc[index][req])) + ')' for req in link.index.values) + "}"
         print(formatted_link)
     print()
 
@@ -226,7 +233,7 @@ def eval_func(type):
         # all l' such that, for l with highest similarity score, sim(h, l') >= 0.67 * sim(h, l)
         return lambda x : x >= 0.67 * x.max()
     elif type == 3:
-        return lambda x : ((x.max() >= 0.3) | (1.5 * x.max() > sum(x))) & (x >= 0.9 * x.max())
+        return lambda x : ((x.max() >= 0.175) | (5 * x.max() > sum(x))) & (x >= 0.85 * x.max())
     else:
         raise ValueError('Match type not recognized.')
 
@@ -257,10 +264,6 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
         FP += len(FPlist)
         TN += len(TNlist)
         FN += len(FNlist)
-    
-    recall = TP / (TP + FN)
-    precision = TP / (TP + FP)
-    fmeasure = 2 * (recall * precision) / (recall + precision)
 
     return TP, FP, TN, FN
 
@@ -287,12 +290,13 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
     vectors_high, vectors_low = vectorize(high_dict, low_dict)
     sim = sim_matrix(vectors_high, vectors_low)
 
-    trace_link_print(sim, eval_func(match_type))
+    if verbose:
+        trace_link_print(sim, eval_func(match_type))
 
     # Pass lambda expression to evaluate
     links = trace_link(sim, eval_func(match_type))
     write_output_file(links)
-    # print(f"Links printed to file " + out_filename)
+    fmeasure = 0
 
     # Compute scores
     try:
@@ -311,8 +315,19 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
         print(f'F-measure = {fmeasure}\n')
     except ValueError as e:
         print('No manually computed links available.')
+    
+    return float(fmeasure)
 
 def custom_filter(keywords):
+    # synonyms = []
+
+    # for word in keywords:
+    #     for syn in wordnet.synsets(word)[:4]:
+    #         for l in syn.hypernyms():
+    #             synonyms.append(l.name())
+    #         # print(syn)
+    # return list(set(synonyms + keywords))
+    # generic = ['new', 'old']
     return [word for word in keywords if word not in ['new', 'old']]
 
 if __name__ == "__main__":
@@ -333,5 +348,31 @@ if __name__ == "__main__":
 
     print(f"Running with matchtype {match_type}\n")
 
-    process(in1, match_type, extrafilter = custom_filter, verbose = True)
-    # process(in2, match_type, extrafilter = custom_filter, verbose = True)
+    filtering = lambda x : x
+    if match_type > 2:
+        filtering = custom_filter
+
+    f1 = process(in1, match_type, extrafilter = filtering, verbose = False)
+    f2 = process(in2, match_type, extrafilter = filtering, verbose = False)
+
+    # maxf = 0.0
+    # good = []
+
+    # # for i1 in range(20):
+    # for i2 in range(40):
+    #         # for i3 in range(10):
+    #     p1 = 0.175 # i1 / 40.0
+    #     p2 = i2
+    #     p3 = 0.85 # 0.5 + i3 / 20.0
+        
+    #     print(str(p1) + ' ' + str(p2) + ' ' + str(p3))
+
+    #     f1 = process(in1, match_type, extrafilter = custom_filter, verbose = False)
+    #     f2 = process(in2, match_type, extrafilter = custom_filter, verbose = False)
+
+    #     if f1 + f2 > maxf:
+    #         maxf = f1 + f2
+    #         good = [p1, p2, p3]
+    
+    # print(good)
+    # print(maxf)
