@@ -243,8 +243,10 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
     '''
     real_links = parse_links_file(real_filename)
     no_links = len(real_links)
-
     UClist = low_dict.keys()
+
+    fpfile = open('FPlist.txt', 'w')
+    fnfile = open('FNlist.txt', 'w')
 
     TP = 0 # tool + manual
     FP = 0 # tool + !manual
@@ -255,16 +257,38 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
         predicted = pred_links[i][1].split(',')
         real = real_links[i][1].split(',')
 
+        if predicted == ['']:
+            predicted = []
+        
+        if real == ['']:
+            real = []
+
+        # Get all classification types
         TPlist = [value for value in predicted if value in real] # intersection
         FPlist = [value for value in predicted if value not in real] # predicted - real
         FNlist = [value for value in real if value not in predicted] # real - predicted
         TNlist = [value for value in UClist if value not in real and value not in predicted]
 
+        # print('fplist: ' + str(FPlist))
+
+        # Update confusion matrix
         TP += len(TPlist)
         FP += len(FPlist)
         TN += len(TNlist)
         FN += len(FNlist)
 
+        # Get concrete misclassiciations for report
+        original = sys.stdout
+        if len(FPlist) > 0:
+            sys.stdout = fpfile # Change the standard output to the file we created.
+            print(pred_links[i][0] + ': ' + ','.join(FPlist))
+
+        if len(FNlist) > 0:
+            sys.stdout = fnfile # Change the standard output to the file we created.
+            print(pred_links[i][0] + ': ' + ','.join(FNlist))
+
+        sys.stdout = original # Reset the standard output to its original value
+        
     return TP, FP, TN, FN
 
 def compute_scores(TP, FP, TN, FN):
@@ -319,16 +343,7 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
     return float(fmeasure)
 
 def custom_filter(keywords):
-    # synonyms = []
-
-    # for word in keywords:
-    #     for syn in wordnet.synsets(word)[:4]:
-    #         for l in syn.hypernyms():
-    #             synonyms.append(l.name())
-    #         # print(syn)
-    # return list(set(synonyms + keywords))
-    # generic = ['new', 'old']
-    return [word for word in keywords if word not in ['new', 'old']]
+    return [word for word in keywords if word not in ['new']]
 
 if __name__ == "__main__":
     '''
