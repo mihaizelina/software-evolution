@@ -237,7 +237,7 @@ def eval_func(type):
     else:
         raise ValueError('Match type not recognized.')
 
-def conf_matrix(pred_links, real_filename, low_dict, high_dict):
+def conf_matrix(pred_links, real_filename, low_dict, high_dict, dataset_no):
     '''
     Given predicted links and pre-computed links, returns the confusion matrix elements.
     '''
@@ -245,8 +245,9 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
     no_links = len(real_links)
     UClist = low_dict.keys()
 
-    fpfile = open('FPlist.txt', 'w')
-    fnfile = open('FNlist.txt', 'w')
+    misfile = open('mislist' + dataset_no + '.txt', 'w')
+    fptext = 'FP misclassifications\n'
+    fntext = 'FN misclassifications\n'
 
     TP = 0 # tool + manual
     FP = 0 # tool + !manual
@@ -254,14 +255,14 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
     FN = 0 # !tool + manual
 
     for i in range(no_links):
-        predicted = pred_links[i][1].split(',')
-        real = real_links[i][1].split(',')
+        predicted = pred_links[i][1].replace(' ', '').split(',')
+        real = real_links[i][1].replace(' ', '').split(',')
 
-        if predicted == ['']:
-            predicted = []
-        
-        if real == ['']:
-            real = []
+        # Remove empty strings
+        if '' in predicted:
+            predicted.remove('')
+        if '' in real:
+            real.remove('')
 
         # Get all classification types
         TPlist = [value for value in predicted if value in real] # intersection
@@ -269,25 +270,32 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict):
         FNlist = [value for value in real if value not in predicted] # real - predicted
         TNlist = [value for value in UClist if value not in real and value not in predicted]
 
-        # print('fplist: ' + str(FPlist))
-
         # Update confusion matrix
         TP += len(TPlist)
         FP += len(FPlist)
         TN += len(TNlist)
         FN += len(FNlist)
 
-        # Get concrete misclassiciations for report
+        # Get concrete misclassiciations for report and print to file
         original = sys.stdout
         if len(FPlist) > 0:
-            sys.stdout = fpfile # Change the standard output to the file we created.
-            print(pred_links[i][0] + ': ' + ','.join(FPlist))
+            # sys.stdout = fpfile # Change the standard output to the file we created.
+            # print(pred_links[i][0] + ': ' + ','.join(FPlist))
+            fptext += pred_links[i][0] + ': ' + ', '.join(FPlist) + '; '
 
         if len(FNlist) > 0:
-            sys.stdout = fnfile # Change the standard output to the file we created.
-            print(pred_links[i][0] + ': ' + ','.join(FNlist))
+            # sys.stdout = fnfile # Change the standard output to the file we created.
+            # print(pred_links[i][0] + ': ' + ','.join(FNlist))
+            fntext += pred_links[i][0] + ': ' + ', '.join(FNlist) + '; '
 
         sys.stdout = original # Reset the standard output to its original value
+    
+    # Print to files
+    original = sys.stdout
+    sys.stdout = misfile
+    print(fptext + '\n')
+    print(fntext)
+    sys.stdout = original # Reset the standard output to its original value
         
     return TP, FP, TN, FN
 
@@ -314,8 +322,8 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
     vectors_high, vectors_low = vectorize(high_dict, low_dict)
     sim = sim_matrix(vectors_high, vectors_low)
 
-    if verbose:
-        trace_link_print(sim, eval_func(match_type))
+    # if verbose:
+    #     trace_link_print(sim, eval_func(match_type))
 
     # Pass lambda expression to evaluate
     links = trace_link(sim, eval_func(match_type))
@@ -324,7 +332,7 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
 
     # Compute scores
     try:
-        TP, FP, TN, FN = conf_matrix(links, dir + 'links.csv', low_dict, high_dict)
+        TP, FP, TN, FN = conf_matrix(links, dir + 'links.csv', low_dict, high_dict, dir[-2])
         recall, precision, fmeasure = compute_scores(TP, FP, TN, FN)
         recall = dec.format(recall)
         precision = dec.format(precision)
@@ -332,8 +340,8 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
 
         print("Results on " + dir[:-1])
         if verbose:
-            print(f'TP = {TP}  FP = {FP}')
-            print(f'FN = {FN}  TN = {TN}')
+            print(f'TP = {TP}  FN = {FN}')
+            print(f'FP = {FP}  TN = {TN}')
             print(f'Recall    = {recall}')
             print(f'Precision = {precision}')
         print(f'F-measure = {fmeasure}\n')
@@ -367,8 +375,8 @@ if __name__ == "__main__":
     if match_type > 2:
         filtering = custom_filter
 
-    f1 = process(in1, match_type, extrafilter = filtering, verbose = False)
-    f2 = process(in2, match_type, extrafilter = filtering, verbose = False)
+    f1 = process(in1, match_type, extrafilter = filtering, verbose = True)
+    f2 = process(in2, match_type, extrafilter = filtering, verbose = True)
 
     # maxf = 0.0
     # good = []
