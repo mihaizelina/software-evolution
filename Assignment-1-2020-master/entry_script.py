@@ -5,7 +5,6 @@ import pandas as pd
 import numpy as np
 import nltk
 from nltk.corpus import stopwords
-from nltk.corpus import wordnet
 from collections import Counter
 from collections import OrderedDict
 
@@ -21,12 +20,6 @@ in_folder = 'input/'
 in_low_filename = in_folder + 'low.csv'
 in_high_filename = in_folder + 'high.csv'
 out_filename= 'output/links.csv'
-
-
-p1 = 0.3
-p2 = 5
-p3 = 0.85
-
 
 def write_output_file(links):
     '''
@@ -108,7 +101,6 @@ def stem_tokens(words, stemmer = 'snowball'):
         print('Invalid stemmer, using Snowball instead')
         sno = nltk.stem.SnowballStemmer('english')
         words = [sno.stem(word) for word in words]
-
     return words
 
 def preprocess(req_dict, stemmer = 'snowball', extrafilter = (lambda x : x)):
@@ -185,7 +177,6 @@ def sim_matrix(vectors_high, vectors_low):
             vrl = vectors_low.loc[column]
             cos_sim = (vrh @ vrl.T) / (np.linalg.norm(vrh)*np.linalg.norm(vrl))
             matrix.at[index, column] = cos_sim
-
     return matrix
 
 def trace_link(sim_matrix, eval):
@@ -196,7 +187,6 @@ def trace_link(sim_matrix, eval):
     for index, _ in sim_matrix.iterrows():
         link = sim_matrix.loc[index][eval(sim_matrix.loc[index])]
         res.append([link.name, ','.join(str(req) for req in link.index.values)])
-
     return res
 
 def trace_link_print(sim_matrix, eval):
@@ -228,17 +218,14 @@ def eval_func(type):
     else:
         raise ValueError('Match type not recognized')
 
-def conf_matrix(pred_links, real_filename, low_dict, high_dict, dataset_no):
+def conf_matrix(pred_links, real_filename, low_dict, high_dict):
     '''
-    Given predicted links and pre-computed links, returns the confusion matrix elements.
+    Takes as input the predicted links, the pre-computed links file name and the two req dicts, 
+    and returns the confusion matrix elements.
     '''
     real_links = parse_links_file(real_filename)
     no_links = len(real_links)
     UClist = low_dict.keys()
-
-    misfile = open('mislist' + dataset_no + '.txt', 'w')
-    fptext = 'FP misclassifications\n'
-    fntext = 'FN misclassifications\n'
 
     TP = 0 # tool + manual
     FP = 0 # tool + !manual
@@ -266,27 +253,12 @@ def conf_matrix(pred_links, real_filename, low_dict, high_dict, dataset_no):
         FP += len(FPlist)
         TN += len(TNlist)
         FN += len(FNlist)
-
-        # Get concrete misclassiciations for report
-        original = sys.stdout
-        if len(FPlist) > 0:
-            fptext += pred_links[i][0] + ': ' + ', '.join(FPlist) + '; '
-        if len(FNlist) > 0:
-            fntext += pred_links[i][0] + ': ' + ', '.join(FNlist) + '; '
-        sys.stdout = original # Reset the standard output to its original value
-    
-    # Print to files
-    original = sys.stdout
-    sys.stdout = misfile
-    print(fptext + '\n')
-    print(fntext)
-    sys.stdout = original # Reset the standard output to its original value
         
     return TP, FP, TN, FN
 
 def compute_scores(TP, FP, TN, FN):
     '''
-    Given a confusion matrix, computes the recall, precision and F-measure.
+    Takes as input a confusion matrix, computes and returns the recall, precision and F-measure.
     '''
     recall = TP / (TP + FN)
     precision = TP / (TP + FP)
@@ -307,19 +279,15 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
     vectors_high, vectors_low = vectorize(high_dict, low_dict)
     sim = sim_matrix(vectors_high, vectors_low)
 
-    # if verbose:
-    #     trace_link_print(sim, eval_func(match_type))
-
     # Pass lambda expression to evaluate
     links = trace_link(sim, eval_func(match_type))
     write_output_file(links)
     print('Links printed to file ' + out_filename)
 
-    # Compute scores
+    # Compute scores, if available
     try:
+        TP, FP, TN, FN = conf_matrix(links, dir + 'links.csv', low_dict, high_dict)
         print('Manually identified links found')
-        fmeasure = 0
-        TP, FP, TN, FN = conf_matrix(links, dir + 'links.csv', low_dict, high_dict, dir[-2])
         recall, precision, fmeasure = compute_scores(TP, FP, TN, FN)
         recall = dec.format(recall)
         precision = dec.format(precision)
@@ -332,12 +300,13 @@ def process(dir, match_type, stemmer = 'snowball', extrafilter = (lambda x : x),
             print(f'Recall    = {recall}')
             print(f'Precision = {precision}')
         print(f'F-measure = {fmeasure}\n')
-        return float(fmeasure)
     except Exception as error:
         print('No manually identified links available')
-    
 
 def custom_filter(keywords):
+    '''
+    Minor filter (experimental)
+    '''
     return [word for word in keywords if word not in ['new']]
 
 if __name__ == "__main__":
@@ -359,11 +328,11 @@ if __name__ == "__main__":
     try:
         print(f"Running with matchtype {match_type}\n")
 
+        # Adjust filtering expression
         filtering = lambda x : x
         if match_type == 3:
             filtering = custom_filter
 
-        # f1 = process(in1, match_type, extrafilter = filtering, verbose = True)
-        f2 = process(in2, match_type, extrafilter = filtering, verbose = True)
+        process(in_folder, match_type, extrafilter = filtering, verbose = True)
     except ValueError as error:
         print(error)
