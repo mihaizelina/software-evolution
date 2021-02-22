@@ -11,10 +11,6 @@ from collections import OrderedDict
 # Digit format
 dec = '{0:.2g}'
 
-# Test filenames
-in1 = 'dataset-1/'
-in2 = 'dataset-2/'
-
 # Standard filenames
 in_folder = 'input/'
 in_low_filename = in_folder + 'low.csv'
