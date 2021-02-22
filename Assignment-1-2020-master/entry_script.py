@@ -363,7 +363,7 @@ if __name__ == "__main__":
         if match_type == 3:
             filtering = custom_filter
 
-        f1 = process(in1, match_type, extrafilter = filtering, verbose = True)
-        # f2 = process(in2, match_type, extrafilter = filtering, verbose = True)
+        # f1 = process(in1, match_type, extrafilter = filtering, verbose = True)
+        f2 = process(in2, match_type, extrafilter = filtering, verbose = True)
     except ValueError as error:
         print(error)
