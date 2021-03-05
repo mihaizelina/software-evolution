@@ -22,22 +22,6 @@ function binarySearch(sortedArray, key) {
 }
 
 /**
- * TYPE 1 CLONES
- */
-
-// Type 1, only whitespace
-
-
-// Type 1, a lot of whitespace
-
-
-// Type 1, only endlines
-
-
-// Type 1, hybrid
-
-
-/**
  * TYPE 2 CLONES
  */
 

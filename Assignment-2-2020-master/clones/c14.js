@@ -1,5 +1,6 @@
 // Type 1, hybrid
-function binarySearch(sortedArray, key) {
+function binarySearch(sortedArray,key)
+{
 
     let start = 0;
 
