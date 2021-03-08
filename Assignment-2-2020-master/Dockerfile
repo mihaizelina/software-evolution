@@ -31,6 +31,12 @@ ENV NODE_OPTIONS=--max-old-space-size=4000
 
 WORKDIR /usr/jquery-data
 
+WORKDIR /usr/manual-clones
+
+COPY clones .
+
+WORKDIR /usr
+
 # Open a bash prompt, such that you can execute commands 
 # such as `cloc`. 
 ENTRYPOINT ["bash"]
