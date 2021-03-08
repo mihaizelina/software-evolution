@@ -1,4 +1,4 @@
-// Type 3, new, harmless lines
+// Type 3, extra lateral lines
 function binarySearch(sortedArray, key) {
     let start = 0;
     print("I am a harmless print");

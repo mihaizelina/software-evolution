@@ -9,12 +9,10 @@ function binarySearch(sortedArray, key) {
             // Key found
 
             
-            
             return middle;
         } else 
         
         if (sortedArray[middle] < key) {
-            
             
             
             // Continue search on right side
@@ -24,11 +22,9 @@ function binarySearch(sortedArray, key) {
             // Continue search on left side
             end
             
-            
             = middle - 1;
         }
     }
-
 
 
 	// Key not present
