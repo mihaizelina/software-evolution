@@ -4,6 +4,9 @@ RUN apt-get update && apt-get install -y curl
 
 RUN curl -sL https://deb.nodesource.com/setup_13.x | bash - && apt-get install -y git nodejs cloc
 
+RUN pip install matplotlib
+RUN pip install numpy
+
 WORKDIR /usr/jquery-data
 
 COPY prep.py .
@@ -36,6 +39,8 @@ WORKDIR /usr/manual-clones
 COPY clones .
 
 WORKDIR /usr
+
+COPY script.py .
 
 # Open a bash prompt, such that you can execute commands 
 # such as `cloc`. 
