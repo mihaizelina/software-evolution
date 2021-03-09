@@ -5,8 +5,8 @@ function binarySearch(sortedArray, key, foo) {
     let x = foo / 2;
 
     while (start <= end) {
-        let middle = Math.floor((start + end) / 2);
-        x *= 2;
+        let middle = Math.floor((start + end)/2);
+        x *=2;
 
         if (sortedArray[middle] === key) {
             // Key found
